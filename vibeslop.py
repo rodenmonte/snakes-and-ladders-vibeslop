@@ -524,7 +524,7 @@ add_tile(55, "Obtain 30 Molch Pearls", 30/8, "~8 pearls/hr from Aerial Fishing",
 # From GOTR? Or from Abyssal creatures?
 p = 3/1200; kph = 30 # 30 reward pulls per hour
 med = int(ceil(nbinom.ppf(0.5, 2, p)))
-add_tile(56, "Obtain 2x Abyssal Dye", 3.0, "30 pulls per hour, 1/1200 drop for each dye, {kph} permits/hour, median {med} permits", confidence="low")
+add_tile(56, "Obtain 2x Abyssal Dye", med/kph, "30 pulls per hour, 1/1200 drop for each dye, {kph} permits/hour, median {med} permits", confidence="low")
 
 # Tile 57: 1x Raid Drop
 add_tile(57, "Obtain 1x Raid Drop", RAID_1X_HOURS)
@@ -1352,9 +1352,9 @@ add_tile(272, "Obtain 1x Any Big Fish", med/kph, f"Same as tile 86, Fishing bass
 
 # Tile 273: 1x Holy/Sang/Twisted Kit (HMT/CMs)
 # HMT is much faster but I don't think it's realistic for most of the team, me included
-p = 1/75; kph = 1.5
+p = 1/75; kph = 3
 med = ceil(log(0.5) / log(1 - p))
-add_tile(273, "Obtain 1x Raid Kit", med/kph, f"Assuming 1.5 CM's/hour, {med} kc on average. HMT would be much faster (14 hours, 5/300 for either kit, 3 EHB rate), but more skill required")
+add_tile(273, "Obtain 1x Raid Kit", med/kph, f"Assuming 3CM's/hour, {med} kc on average. HMT would be faster (14 hours, 5/300 for either kit, 3 EHB rate), but more skill required")
 
 # Tile 274: Wintertodt
 add_tile(274, "Obtain Wintertodt items", WINTERTODT_HOURS)
@@ -1447,9 +1447,9 @@ med = ceil(log(0.5) / log(1 - p))
 add_tile(297, "Obtain 1x Ballista Component", med/kph, f"Same as tile 205, ~1/180 combined from DGs, {kph} kph")
 
 # Tile 298: 1x Holy/Sang/Twisted Kit
-p = 1/75; kph = 1.5
+p = 1/75; kph = 3
 med = ceil(log(0.5) / log(1 - p))
-add_tile(298, "Obtain 1x Raid Kit", med/kph, f"Same as tile 273, Assuming 1.5 CM's/hour, {med} kc on average. HMT would be much faster (at least 2x), but more skill required")
+add_tile(298, "Obtain 1x Raid Kit", med/kph, f"Same as tile 273, Assuming 3 CM's/hour, {med} kc on average. HMT would be faster, but more skill required")
 
 # Tile 299: 1x SRA Piece
 p = 1/720; kph = 40 # Duke numbers
