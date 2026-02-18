@@ -63,59 +63,57 @@ def add_free(tile_num, description):
 # REUSABLE ESTIMATES FOR RECURRING TILE TYPES
 # ============================================================
 
+class BossOrRaidForUnique:
+    def __init__(self, name, unique_rate, ehb):
+        self.name = name
+        self.unique_rate = unique_rate
+        self.ehb = ehb
+        self.median_kc = ceil(log(0.5) / log(1 - self.unique_rate))
+        self.hours_to_unique = self.median_kc / self.ehb
+
+    def hours_for_two_uniques(self):
+        return median_kills_nbinom(2, self.unique_rate) / self.ehb
+
 # --- Slayer Boss Drop (best option) ---
-# Best slayer boss for uniques: Grotesque Guardians (granite dust doesn't count, but Black Tourmaline Core 1/1000, Granite Gloves 1/500, Granite Ring 1/500, Granite Hammer 1/750)
-# Combined unique rate ~1/174. Kills/hr ~28
-# OR Cerberus: Primordial/Pegasian/Eternal crystals each 1/512, Smouldering stone 1/512 -> combined ~1/128. ~42 kills/hr
-# OR Thermonuclear Smoke Devil: Occult necklace 1/350, Smoke battlestaff 1/512 -> combined ~1/210. ~90 kills/hr
-# Cerberus is probably best: combined unique ~1/128, 42 kph -> median ~89 kills = ~2.1 hours
-# Actually let's think more carefully. 
-# Cerberus: crystals 3x(1/512) + smouldering 1/512 = 4/512 = 1/128. 42 kph. Median = ceil(log(0.5)/log(127/128)) = 88 kills = 2.1 hr
-# Thermy: Occult 1/350 + Smoke BS 1/512 = ~1/208. 90 kph -> median ~144 kills = 1.6 hr
-# Actually Thermy is faster. Let's use that.
-# Wait - we need to check what counts. "Slayer Boss" on the slayer skill tab.
-# Thermy: combined ~1/208, 90kph -> median kills = 144, hours = 1.6
-# Let's also consider Alchemical Hydra: uniques = claw 1/1001, leather 1/514, head jar pet... 
-#   Ring pieces: each 1/181 x3 = combined ring ~1/60.3, plus claw 1/1001, leather 1/514
-#   Combined unique ~1/46. But kills/hr ~28. Median ~32 kills = 1.14 hr
-# Actually Hydra is great for this. Combined unique from Hydra (ring pieces + claw + leather) ~1/46, 28kph
-# Median for 1 unique = ceil(log(0.5)/log(45/46)) = 32 kills / 28 = 1.14 hr
-# But we should be conservative - ring pieces may or may not count as "unique table only"
-# The ring pieces (eye, fang, heart) are on the unique table. So yes they count.
-# Hydra: ~1.1 hours for 1x slayer boss unique
+# 1/256 unqiue at shellbane gryphon, 95 ehb, 178 median on rate, 1.8 hour/unique
+# 62/3000 unique at GG's, 34 kph, 34 median to go on rate (really!), 1 hour/unique
+# 1/100 unique at sire, 39 EHB, 69 median on rate, 2 hour/unique
+# 10/3000 unique at kraken (jar/pet/trident), 60 kph, ~210 median, 3.5 hours/unique
+# 4/520 unique at cerb, 50 EHB, ~90 kills median, 1.8 hours/unique
+# ~10/2000 unique chance at thermy, 80 EHB, ~139 kills median, 1.8 hours/unique
+# 10/600 unique at araxxor, 38 kph, 42 median on rate, 1.1 hour/unique
+# ~24/2160 unique chance at hydra, 25 EHB, ~62 kills median for unique, 2.5 hours/unique
+SLAYER_BOSSES = [
+    BossOrRaidForUnique("Shellbane Gryphon", 1/256, 95),
+    BossOrRaidForUnique("Grotesque Guardians", 62/3000, 34),
+    BossOrRaidForUnique("Abyssal Sire", 1/100, 39),
+    BossOrRaidForUnique("Kraken", 10/3000, 60),
+    BossOrRaidForUnique("Cerberus", 4/520, 39),
+    BossOrRaidForUnique("Thermonuclear Smoke Devil", 10/2000, 80),
+    BossOrRaidForUnique("Araxxor", 10/600, 38),
+    BossOrRaidForUnique("Alchemical Hydra", 24/2160, 25)
+]
 
-SLAYER_BOSS_1X_HOURS = 1.1  # Alchemical Hydra, ~28 kph, combined unique ~1/46
-SLAYER_BOSS_2X_HOURS = 2.6  # median for 2 drops
-
-# For 2x slayer boss drops: nbinom(2, 1/46) median ≈ 72 kills / 28 kph ≈ 2.6 hr
-# Actually let me compute properly
-p_hydra_unique = 1/46
-med_1_slayer = ceil(log(0.5) / log(1 - p_hydra_unique))
-med_2_slayer = int(ceil(nbinom.ppf(0.5, 2, p_hydra_unique)))
-SLAYER_BOSS_1X_HOURS = round(med_1_slayer / 28, 2)
-SLAYER_BOSS_2X_HOURS = round(med_2_slayer / 28, 2)
+SLAYER_BOSS_1X_HOURS = min(map(lambda boss: boss.hours_to_unique, SLAYER_BOSSES))
+SLAYER_BOSS_2X_HOURS = min(map(lambda boss: boss.hours_for_two_uniques(), SLAYER_BOSSES))
 
 # --- Raid Drop (any raid, unique table) ---
-# Best option: Chambers of Xeric (solo or small team)
-# CoX unique rate: ~1/30 per raid (solo scaled). ~3 raids/hr solo = ~10 hrs for 1 unique
-# Actually, in a team: ~1/8.5 chance of ANY purple per raid (trio), ~4 raids/hr
-# But for ironman purposes, let's think about what counts.
-# ToA is probably fastest for uniques: ~1/24 per raid at ~150 invo, ~2.5 raids/hr
-# Actually at higher invocation, ToA can be ~1/9 for a purple (including thread).
-# But "UNIQUE TABLE ONLY" - threads may not count.
-# CoX trio: ~4 raids/hr, unique chance per player ~1/11ish in trio
-# Let's estimate: ToA 150 invo, ~2.5 raids/hr, unique per raid ~1/15 (no thread)
-# Median for 1: ceil(log(0.5)/log(14/15)) = 10 raids / 2.5 = 4 hours
-# CoX: ~3.5 raids/hr in team, unique ~1/11 per person 
-# Median: ceil(log(0.5)/log(10/11)) = 8 raids / 3.5 = 2.3 hr
-# ToB: ~2.5 raids/hr, unique ~1/9.1 per person in trio
-# Median: 6 raids / 2.5 = 2.4 hr
-# Let's use CoX at 2.3 hr as the best estimate
-# Actually for well-geared teams, CoX can be quite fast.
-# Let's be a bit more conservative: 3 hrs for 1 raid unique
+# While team purple rates go up in group raids, individual doesn't (ignore ToB)
+# Solo ToA: 30 minute 300's need 16 raids median (4.3% chance of purple), 8 hours
+# Solo ToA: 40 minute 500's 7.6% purple chance 9 kc median (7.6% purple chance), 6 hours
+# Solo CM: 93k points per hour, 10.72% purple per hour, (10.72% purp chance), 6 hours
+# Trio ToB: 1/9.1 unique chance, 1/27.3 (3.6%) solo, 19 kills needed median, 20 minutes/raid = 6.3 hours
+# HMT Trio: 1/7.7, 1/23.1 solo, 16 kills needed median, 24 minutes/raid = 6.4 hours
+RAIDS = [
+    BossOrRaidForUnique("300 ToA (30 minute solo)", 0.043, 2),
+    BossOrRaidForUnique("500 ToA (40 minute solo)", 0.076, 1.5),
+    BossOrRaidForUnique("CoX (93k points/hour)", 0.1072, 1),
+    BossOrRaidForUnique("Trio ToB", 1/27.3, 3),
+    BossOrRaidForUnique("Trio HMT", 1/23.1, (60 / 24))
+]
 
-RAID_1X_HOURS = 3.0
-RAID_2X_HOURS = 7.0  # roughly double+ for variance
+RAID_1X_HOURS = min(map(lambda raid: raid.hours_to_unique, RAIDS))
+RAID_2X_HOURS = min(map(lambda raid: raid.hours_for_two_uniques(), RAIDS))
 
 # --- Barrows Unique ---
 # 24 items, 1/17.42 for any unique per chest (with max reward potential)
@@ -351,7 +349,7 @@ add_tile(17, "Obtain 1x Warped Sceptre", med/kph, f"1/320 from terrorbirds, {kph
 # Tile 18: 1x Sulphur Blades (from Sulphur Naguas)
 p = 1/450; kph = 290 # https://oldschool.runescape.wiki/w/Money_making_guide/Killing_sulphur_naguas
 med = int(ceil(nbinom.ppf(0.5, 1, p)))
-add_tile(18, "Obtain 1x Sulphur Blades", med/kph, f"1/450 from sulphur naguas, {kph} kph, median {med} kc", confidence="low")
+add_tile(18, "Obtain 1x Sulphur Blades", med/kph, f"1/450 from sulphur naguas, {kph} kph, median {med} kc")
 
 # Tile 19: Movement
 add_movement(19, "Go back to Tile #14", 14)
@@ -524,7 +522,7 @@ add_tile(55, "Obtain 30 Molch Pearls", 30/8, "~8 pearls/hr from Aerial Fishing",
 # From GOTR? Or from Abyssal creatures?
 p = 3/1200; kph = 30 # 30 reward pulls per hour
 med = int(ceil(nbinom.ppf(0.5, 2, p)))
-add_tile(56, "Obtain 2x Abyssal Dye", med/kph, "30 pulls per hour, 1/1200 drop for each dye, {kph} permits/hour, median {med} permits", confidence="low")
+add_tile(56, "Obtain 2x Abyssal Dye", med/kph, "30 pulls per hour, 1/1200 drop for each dye, 3/1200 for any, {kph} permits/hour, median {med} permits", confidence="medium")
 
 # Tile 57: 1x Raid Drop
 add_tile(57, "Obtain 1x Raid Drop", RAID_1X_HOURS)
@@ -593,7 +591,7 @@ add_tile(74, "Obtain 5x Flippers", med/kph, f"1/64 from Mogres, {kph} kph, media
 # Tile 75: 1x Teleport Anchoring Scroll (Zombie chest)
 p = 1/275; kph = 200
 med = ceil(log(0.5) / log(1 - p))
-add_tile(75, "Obtain 1x Teleport Anchoring Scroll", med / kph, "Looting the zombie pirate's locker, 1/275, 200 kph", confidence="low")
+add_tile(75, "Obtain 1x Teleport Anchoring Scroll", med / kph, "Looting the zombie pirate's locker, 1/275, 200 kph")
 
 # Tile 76: 1x Hueycoatl Unique
 add_tile(76, "Obtain 1x Hueycoatl Unique", huey_hours(1))
@@ -708,7 +706,7 @@ add_tile(101, "Obtain 3x Easy Clue Uniques", med/kph, f"10 easy clues/hr, 247/10
 add_tile(102, "Obtain 1x Slayer Boss Drop", SLAYER_BOSS_1X_HOURS)
 
 # Tile 103: 1x Doom of Mokhaiotl Unique
-add_tile(103, "Obtain 1x Doom Unique", doom_hours(1), "~1/50 for any unique by wave 8, 10 kph")
+add_tile(103, "Obtain 1x Doom Unique", doom_hours(1), "~1/50 for any unique by wave 8, 6 kph")
 
 # Tile 104: 3x Moons of Peril
 add_tile(104, "Obtain 3x Moons of Peril Unique", moons_hours(3))
@@ -817,7 +815,7 @@ add_movement(131, "Go back to Tile #126", 126)
 add_movement(132, "Advance to Tile #140", 140)
 
 # Tile 133: 1x Doom Unique
-add_tile(133, "Obtain 1x Doom Unique", doom_hours(1), confidence="low")
+add_tile(133, "Obtain 1x Doom Unique", doom_hours(1))
 
 # Tile 134: 1x Slayer Boss
 add_tile(134, "Obtain 1x Slayer Boss Drop", SLAYER_BOSS_1X_HOURS)
@@ -826,9 +824,9 @@ add_tile(134, "Obtain 1x Slayer Boss Drop", SLAYER_BOSS_1X_HOURS)
 add_movement(135, "Go back to Tile #121", 121)
 
 # Tile 136: 1x Medium clue boots (Ranger/Climbing(g)/Holy Sandals/Spiked Manacles/Wizard)
-p = 5/1133; kph = 10 # 10 clues/hour from eclectics
+p = 5/283.6; kph = 10 # 10 clues/hour from eclectics
 med = ceil(log(0.5) / log(1 - p))
-add_tile(136, "Obtain 1x Med Clue Boots", med/kph, f"~1/227 combined from med caskets, {kph} clues/hr, median {med} caskets")
+add_tile(136, "Obtain 1x Med Clue Boots", med/kph, f"5/283.6 combined from med caskets, {kph} clues/hr, median {med} caskets")
 
 # Tile 137: 1x Raid Drop
 add_tile(137, "Obtain 1x Raid Drop", RAID_1X_HOURS)
@@ -866,7 +864,7 @@ add_movement(145, "Advance to Tile #160", 160)
 add_tile(146, "Obtain 2x Slayer Boss Drop", SLAYER_BOSS_2X_HOURS)
 
 # Tile 147: 1x Vorkath Unique
-add_tile(147, "Obtain 1x Vorkath Unique", VORKATH_UNIQUE_HOURS, "Head at 1/50 makes this fast, 30 kph")
+add_tile(147, "Obtain 1x Vorkath Unique", VORKATH_UNIQUE_HOURS, "Head at 1/50 makes this fast, 25 kph")
 
 # Tile 148: Free
 add_free(148, "Free Tile - Roll Again")
@@ -961,7 +959,7 @@ add_movement(174, "Go back to Tile #161", 161)
 # Tile 175: 1x Abyssal Dye
 p = 3/1200; kph = 30 # 30 reward pulls per hour
 med = int(ceil(nbinom.ppf(0.5, 1, p)))
-add_tile(56, "Obtain 1x Abyssal Dye", med/kph, "Similar to tile 56, 30 pulls per hour, 1/1200 drop for each dye, {kph} permits/hour, median {med} permits", confidence="low")
+add_tile(56, "Obtain 1x Abyssal Dye", med/kph, "Similar to tile 56, 30 pulls per hour, 1/1200 drop for each dye, 3/1200 per pull, {kph} permits/hour, median {med} permits", confidence="medium")
 
 # Tile 176: 1x Doom Unique
 add_tile(176, "Obtain 1x Doom Unique", doom_hours(1))
@@ -1130,7 +1128,7 @@ add_tile(219, "Obtain 1x Wildy Boss Weapon upgrade", med/kph, f"Same as tile 128
 # Tile 220: 2x Ancient Ceremonial piece
 p = 1/640; kph = 120
 med = int(ceil(nbinom.ppf(0.5, 2, p)))
-add_tile(220, "Obtain 1x Ancient Ceremonial piece", med/kph, f"Similar to tile 51, 1/640 from blood reavers outside nex bank, {kph} kph, median {med} kc", confidence="medium")
+add_tile(220, "Obtain 2x Ancient Ceremonial piece", med/kph, f"Similar to tile 51, 1/640 from blood reavers outside nex bank, {kph} kph, median {med} kc", confidence="medium")
 
 # Tile 221: 1x Shaman Mask (Ogress shamans)
 p = 1/1200; kph = 120
@@ -1386,7 +1384,7 @@ med = ceil(log(0.5) / log(1 - p))
 add_tile(281, "Obtain 1x Giant Egg Sack", med/kph, "1/20 from sarachnis")
 
 # Tile 282: 3x Moons of Peril
-add_tile(282, "Obtain 3x Moons of Peril Unique", moons_hours(3), confidence="low")
+add_tile(282, "Obtain 3x Moons of Peril Unique", moons_hours(3))
 
 # Tile 283: 1x Blood/Shadow/Ice/Smoke Quartz (from DT2 area)
 # Quartz are all ~1/200, duke is the fastest to kill
@@ -1483,9 +1481,9 @@ med = ceil(log(0.5) / log(1 - p))
 add_tile(305, "Obtain 1x Sigil/Holy Elixir", med/kph, f"~1/132 from Corp, {kph} kph")
 
 # Tile 306: 1x Med Clue Boots
-p = 5/1133; kph = 10 # 10 clues/hour from eclectics
+p = 5/238.6; kph = 10 # 10 clues/hour from eclectics
 med = ceil(log(0.5) / log(1 - p))
-add_tile(306, "Obtain 1x Med Clue Boots", med/kph, f"same as tile 136, ~1/227 combined from med caskets, {kph} clues/hr, median {med} caskets")
+add_tile(306, "Obtain 1x Med Clue Boots", med/kph, f"same as tile 136, 5/238.6 combined from med caskets, {kph} clues/hr, median {med} caskets")
 
 # Tile 307: 5x Inferno Capes
 # Each Inferno run takes 60-90 min for experienced players. Not guaranteed completion.
@@ -1578,6 +1576,51 @@ for i, t in enumerate(tiles):
         elif col == 3:
             cell.fill = cat_fill
 
+ws3 = wb.create_sheet("Slayer Bosses")
+sum_headers = ["Boss", "Unique Rate", "EHB", "Median KC for Unique", "Hours -> 1 unique", "Hours -> 2 uniques"]
+for col, h in enumerate(sum_headers, 1):
+    cell = ws3.cell(row=1, column=col, value=h)
+    cell.font = header_font
+    cell.fill = PatternFill("solid", fgColor="843C0C")
+    cell.alignment = header_align
+for i, boss in enumerate(SLAYER_BOSSES):
+    row = i + 2
+    ws3.cell(row=row, column=1, value=boss.name)
+    ws3.cell(row=row, column=2, value=boss.unique_rate).number_format = '0.00000'
+    ws3.cell(row=row, column=3, value=boss.ehb)
+    ws3.cell(row=row, column=4, value=boss.median_kc)
+    ws3.cell(row=row, column=5, value=boss.hours_to_unique).number_format = '0.00'
+    ws3.cell(row=row, column=6, value=boss.hours_for_two_uniques()).number_format = '0.00'
+ws3.column_dimensions['A'].width = 32
+ws3.column_dimensions['B'].width = 16
+ws3.column_dimensions['C'].width = 16
+ws3.column_dimensions['D'].width = 16
+ws3.column_dimensions['E'].width = 16
+ws3.column_dimensions['F'].width = 16
+
+ws4 = wb.create_sheet("Raids")
+sum_headers = ["Raid", "Unique Rate", "EHB", "Median KC for Unique", "Hours -> 1 unique", "Hours -> 2 uniques"]
+for col, h in enumerate(sum_headers, 1):
+    cell = ws4.cell(row=1, column=col, value=h)
+    cell.font = header_font
+    cell.fill = PatternFill("solid", fgColor="843C0C")
+    cell.alignment = header_align
+for i, raid in enumerate(RAIDS):
+    row = i + 2
+    ws4.cell(row=row, column=1, value=raid.name)
+    ws4.cell(row=row, column=2, value=raid.unique_rate).number_format = '0.00000'
+    ws4.cell(row=row, column=3, value=raid.ehb)
+    ws4.cell(row=row, column=4, value=raid.median_kc)
+    ws4.cell(row=row, column=5, value=raid.hours_to_unique).number_format = '0.00'
+    ws4.cell(row=row, column=6, value=raid.hours_for_two_uniques()).number_format = '0.00'
+ws4.column_dimensions['A'].width = 32
+ws4.column_dimensions['B'].width = 16
+ws4.column_dimensions['C'].width = 16
+ws4.column_dimensions['D'].width = 16
+ws4.column_dimensions['E'].width = 16
+ws4.column_dimensions['F'].width = 16
+
+
 # Add summary sheet
 ws2 = wb.create_sheet("Skip Analysis")
 
@@ -1641,10 +1684,14 @@ for i, t in enumerate(obtain_tiles):
 # Freeze panes
 ws.freeze_panes = 'A2'
 ws2.freeze_panes = 'A2'
+ws3.freeze_panes = 'A2'
+ws4.freeze_panes = 'A2'
 
 # Auto-filter
 ws.auto_filter.ref = f"A1:F{len(tiles)+1}"
 ws2.auto_filter.ref = f"A1:F{len(obtain_tiles)+1}"
+ws3.auto_filter.ref = f"A1:F{len(SLAYER_BOSSES)+1}"
+ws4.auto_filter.ref = f"A1:F{len(RAIDS)+1}"
 
 output_path = "./snakes_ladders_estimates.xlsx"
 wb.save(output_path)
